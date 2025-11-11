@@ -17,11 +17,11 @@ pipeline {
                 script {
                     echo "Cloning the repository manually..."
                     sh '''
-                        if [ -d "BookStoreApp-Distributed-Application" ]; then
-                            rm -rf BookStoreApp-Distributed-Application
+                        if [ -d "sample-book-store-app" ]; then
+                            rm -rf sample-book-store-app
                         fi
-                        git clone https://github.com/soumyaparida00/sample-java-app.git
-                        cd BookStoreApp-Distributed-Application
+                        git clone https://github.com/soumyaparida00/https://github.com/soumyaparida00/sample-book-store-app.git
+                        cd sample-book-store-app
                         git checkout main || git checkout master
                     '''
                     echo "Repository cloned successfully"
@@ -34,7 +34,7 @@ pipeline {
                 script {
                     echo "Building React frontend..."
                     sh '''
-                        cd BookStoreApp-Distributed-Application/bookstore-frontend-react-app
+                        cd sample-book-store-app/bookstore-frontend-react-app
                         npm install
                         npm run build
                     '''
@@ -48,7 +48,7 @@ pipeline {
                     echo "Deploying frontend to S3 and invalidating CloudFront cache..."
                     sh '''
                         source jenkins/env/dev.env
-                        FRONTEND_DIR="BookStoreApp-Distributed-Application/bookstore-frontend-react-app/build"
+                        FRONTEND_DIR="sample-book-store-app/bookstore-frontend-react-app/build"
 
                         echo "Uploading build to S3 bucket: $S3_BUCKET"
                         aws s3 sync "$FRONTEND_DIR" "s3://$S3_BUCKET/" --delete
