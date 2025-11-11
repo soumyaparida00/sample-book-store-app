@@ -1,0 +1,130 @@
+pipeline {
+    agent any
+
+    environment {
+        // Load variables
+        ENV_FILE = "jenkins/env/dev.env"
+    }
+
+    options {
+        timestamps()
+    }
+
+    stages {
+
+        stage('Checkout Source Code') {
+            steps {
+                script {
+                    echo "Cloning the repository manually..."
+                    sh '''
+                        if [ -d "BookStoreApp-Distributed-Application" ]; then
+                            rm -rf BookStoreApp-Distributed-Application
+                        fi
+                        git clone https://github.com/soumyaparida00/sample-java-app.git
+                        cd BookStoreApp-Distributed-Application
+                        git checkout main || git checkout master
+                    '''
+                    echo "Repository cloned successfully"
+                }
+            }
+        }
+
+        stage('Build Frontend') {
+            steps {
+                script {
+                    echo "Building React frontend..."
+                    sh '''
+                        cd BookStoreApp-Distributed-Application/bookstore-frontend-react-app
+                        npm install
+                        npm run build
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy Frontend (S3 + CloudFront)') {
+            steps {
+                script {
+                    echo "Deploying frontend to S3 and invalidating CloudFront cache..."
+                    sh '''
+                        source jenkins/env/dev.env
+                        FRONTEND_DIR="BookStoreApp-Distributed-Application/bookstore-frontend-react-app/build"
+
+                        echo "Uploading build to S3 bucket: $S3_BUCKET"
+                        aws s3 sync "$FRONTEND_DIR" "s3://$S3_BUCKET/" --delete
+
+                        echo "🧹 Invalidating CloudFront cache for distribution: $CLOUDFRONT_DISTRIBUTION_ID"
+                        aws cloudfront create-invalidation \
+                            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+                            --paths "/*"
+
+                        echo "✅ Frontend deployed successfully via CloudFront"
+                    '''
+                }
+            }
+        }
+
+        stage('Build Backend') {
+            steps {
+                script {
+                    echo "⚙️ Building Spring Boot backend services..."
+                    sh '''
+                        cd BookStoreApp-Distributed-Application/bookstore-api-gateway-service
+                        mvn clean package -DskipTests
+                        cp target/*.jar ../../bookstore-api-gateway.jar
+
+                        cd ../bookstore-catalog-service
+                        mvn clean package -DskipTests
+                        cp target/*.jar ../../bookstore-catalog.jar
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy Backend (VM)') {
+            steps {
+                script {
+                    echo "🚀 Deploying backend JARs to VM..."
+                    sh '''
+                        source jenkins/env/dev.env
+                        scp bookstore-api-gateway.jar ubuntu@$BACKEND_VM_IP:$BACKEND_DEPLOY_PATH/
+                        scp bookstore-catalog.jar ubuntu@$BACKEND_VM_IP:$BACKEND_DEPLOY_PATH/
+
+                        ssh ubuntu@$BACKEND_VM_IP <<EOF
+                            sudo systemctl restart bookstore-backend.service
+                        EOF
+
+                        echo "✅ Backend deployed successfully"
+                    '''
+                }
+            }
+        }
+
+        stage('Smoke Test') {
+            steps {
+                script {
+                    echo "🧪 Running smoke tests..."
+                    sh '''
+                        source jenkins/env/dev.env
+                        echo "🌐 Checking backend API health..."
+                        curl -f "http://$BACKEND_VM_IP:8080/actuator/health"
+
+                        echo "🌍 Checking frontend CDN availability..."
+                        curl -I "https://$CLOUDFRONT_DOMAIN" | grep HTTP
+
+                        echo "✅ Smoke tests passed successfully"
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "🎉 CI/CD pipeline executed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed. Check logs for details."
+        }
+    }
+}
