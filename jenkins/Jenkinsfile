@@ -34,8 +34,10 @@ pipeline {
                 script {
                     echo "Building React frontend..."
                     sh '''
-                        export NODE_OPTIONS=--openssl-legacy-provider
                         cd sample-book-store-app/bookstore-frontend-react-app
+                        rm -rf node_modules package-lock.json build
+                        
+                        export NODE_OPTIONS=--openssl-legacy-provider
                         npm install
                         npm run build
                     '''
