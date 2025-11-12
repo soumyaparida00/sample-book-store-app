@@ -36,9 +36,9 @@ pipeline {
                     sh '''
                         cd sample-book-store-app/bookstore-frontend-react-app
                         rm -rf node_modules package-lock.json build
-                        
+
                         export NODE_OPTIONS=--openssl-legacy-provider
-                        npm install
+                        npm install --legacy-peer-deps
                         npm run build
                     '''
                 }
