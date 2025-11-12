@@ -20,7 +20,7 @@ pipeline {
                         if [ -d "sample-book-store-app" ]; then
                             rm -rf sample-book-store-app
                         fi
-                        git clone https://github.com/soumyaparida00/https://github.com/soumyaparida00/sample-book-store-app.git
+                        git clone https://github.com/soumyaparida00/sample-book-store-app.git
                         cd sample-book-store-app
                         git checkout main || git checkout master
                     '''
