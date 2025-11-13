@@ -46,7 +46,7 @@ pipeline {
                 script {
                     echo "Deploying frontend to S3 and invalidating CloudFront cache..."
                     sh '''
-                        source jenkins/env/dev.env
+                        . jenkins/env/dev.env
                         FRONTEND_DIR="bookstore-frontend-react-app/build"
 
                         echo "Uploading build to S3 bucket: $S3_BUCKET"
@@ -85,7 +85,7 @@ pipeline {
                 script {
                     echo "🚀 Deploying backend JARs to VM..."
                     sh '''
-                        source jenkins/env/dev.env
+                        . jenkins/env/dev.env
                         scp bookstore-api-gateway.jar ubuntu@$BACKEND_VM_IP:$BACKEND_DEPLOY_PATH/
                         scp bookstore-catalog.jar ubuntu@$BACKEND_VM_IP:$BACKEND_DEPLOY_PATH/
 
@@ -104,7 +104,7 @@ EOF
                 script {
                     echo "🧪 Running smoke tests..."
                     sh '''
-                        source jenkins/env/dev.env
+                        . jenkins/env/dev.env
                         echo "🌐 Checking backend API health..."
                         curl -f "http://$BACKEND_VM_IP:8080/actuator/health"
 
