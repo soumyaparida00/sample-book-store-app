@@ -15,16 +15,12 @@ pipeline {
         stage('Checkout Source Code') {
             steps {
                 script {
-                    echo "Cloning the repository manually..."
+                    echo "Using existing workspace checkout..."
                     sh '''
-                        if [ -d "sample-book-store-app" ]; then
-                            rm -rf sample-book-store-app
-                        fi
-                        git clone https://github.com/soumyaparida00/sample-book-store-app.git
-                        cd sample-book-store-app
                         git checkout main || git checkout master
+                        git pull origin main || git pull origin master
                     '''
-                    echo "Repository cloned successfully"
+                    echo "Repository ready"
                 }
             }
         }
@@ -34,7 +30,7 @@ pipeline {
                 script {
                     echo "Building React frontend..."
                     sh '''
-                        cd sample-book-store-app/bookstore-frontend-react-app
+                        cd bookstore-frontend-react-app
                         rm -rf node_modules package-lock.json build
 
                         export NODE_OPTIONS=--openssl-legacy-provider
@@ -51,7 +47,7 @@ pipeline {
                     echo "Deploying frontend to S3 and invalidating CloudFront cache..."
                     sh '''
                         source jenkins/env/dev.env
-                        FRONTEND_DIR="sample-book-store-app/bookstore-frontend-react-app/build"
+                        FRONTEND_DIR="bookstore-frontend-react-app/build"
 
                         echo "Uploading build to S3 bucket: $S3_BUCKET"
                         aws s3 sync "$FRONTEND_DIR" "s3://$S3_BUCKET/" --delete
@@ -72,13 +68,13 @@ pipeline {
                 script {
                     echo "⚙️ Building Spring Boot backend services..."
                     sh '''
-                        cd BookStoreApp-Distributed-Application/bookstore-api-gateway-service
+                        cd bookstore-api-gateway-service
                         mvn clean package -DskipTests
-                        cp target/*.jar ../../bookstore-api-gateway.jar
+                        cp target/*.jar ../bookstore-api-gateway.jar
 
                         cd ../bookstore-catalog-service
                         mvn clean package -DskipTests
-                        cp target/*.jar ../../bookstore-catalog.jar
+                        cp target/*.jar ../bookstore-catalog.jar
                     '''
                 }
             }
@@ -95,7 +91,7 @@ pipeline {
 
                         ssh ubuntu@$BACKEND_VM_IP <<EOF
                             sudo systemctl restart bookstore-backend.service
-                        EOF
+EOF
 
                         echo "✅ Backend deployed successfully"
                     '''
