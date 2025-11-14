@@ -79,10 +79,12 @@ pipeline {
                         cd ../bookstore-commons
                         mvn clean package -DskipTests
                         cp target/*.jar ../bookstore-commons.jar
+                        cp target/*.jar ../bookstore-catalog-service/bookstore-commons-0.0.1-SNAPSHOT.jar
 
                         cd ../bookstore-feign
                         mvn clean package -DskipTests
                         cp target/*.jar ../bookstore-feign.jar
+                        cp target/*.jar ../bookstore-catalog-service/bookstore-commons-0.0.1-SNAPSHOT.jar
 
                         cd ../bookstore-catalog-service
                         mvn clean package -DskipTests
