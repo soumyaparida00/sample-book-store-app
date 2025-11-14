@@ -76,7 +76,7 @@ pipeline {
                         mvn clean package -DskipTests
                         cp target/*.jar ../bookstore-api-gateway.jar
 
-                        cd bookstore-commons
+                        cd ../bookstore-commons
                         mvn clean package -DskipTests
                         cp target/*.jar ../bookstore-commons.jar
 
