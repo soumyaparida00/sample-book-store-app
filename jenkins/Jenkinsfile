@@ -84,7 +84,7 @@ pipeline {
                         cd ../bookstore-feign
                         mvn clean package -DskipTests
                         cp target/*.jar ../bookstore-feign.jar
-                        cp target/*.jar ../bookstore-catalog-service/bookstore-commons-0.0.1-SNAPSHOT.jar
+                        cp target/*.jar ../bookstore-catalog-service/bookstore-feign-0.0.1-SNAPSHOT.jar
 
                         cd ../bookstore-catalog-service
                         mvn clean package -DskipTests
