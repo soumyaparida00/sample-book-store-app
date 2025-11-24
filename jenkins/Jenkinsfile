@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     tools {
-    jdk 'jdk11'
+        jdk 'jdk11'
     }
 
     environment {
@@ -56,12 +56,12 @@ pipeline {
                         echo "Uploading build to S3 bucket: $S3_BUCKET"
                         aws s3 sync "$FRONTEND_DIR" "s3://$S3_BUCKET/" --delete
 
-                        echo "🧹 Invalidating CloudFront cache for distribution: $CLOUDFRONT_DISTRIBUTION_ID"
+                        echo "Invalidating CloudFront cache for distribution: $CLOUDFRONT_DISTRIBUTION_ID"
                         aws cloudfront create-invalidation \
                             --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
                             --paths "/*"
 
-                        echo "✅ Frontend deployed successfully via CloudFront"
+                        echo "Frontend deployed successfully via CloudFront"
                     '''
                 }
             }
@@ -70,25 +70,14 @@ pipeline {
         stage('Build Backend') {
             steps {
                 script {
-                    echo "⚙️ Building Spring Boot backend services..."
+                    echo "Building Spring Boot backend services..."
                     sh '''
-                        cd bookstore-api-gateway-service
-                        mvn clean package -DskipTests
-                        cp target/*.jar ../bookstore-api-gateway.jar
+                        # Build the Maven reactor once so parent and shared modules are installed locally
+                        mvn -B -DskipTests clean install
 
-                        cd ../bookstore-commons
-                        mvn clean package -DskipTests
-                        cp target/*.jar ../bookstore-commons.jar
-                        cp target/*.jar ../bookstore-catalog-service/bookstore-commons-0.0.1-SNAPSHOT.jar
-
-                        cd ../bookstore-feign
-                        mvn clean package -DskipTests
-                        cp target/*.jar ../bookstore-feign.jar
-                        cp target/*.jar ../bookstore-catalog-service/bookstore-feign-0.0.1-SNAPSHOT.jar
-
-                        cd ../bookstore-catalog-service
-                        mvn clean package -DskipTests
-                        cp target/*.jar ../bookstore-catalog.jar
+                        # Collect deployable JARs for the services we ship
+                        cp bookstore-api-gateway-service/target/bookstore-api-gateway-service-0.0.1-SNAPSHOT.jar bookstore-api-gateway.jar
+                        cp bookstore-catalog-service/target/bookstore-catalog-service-0.0.1-SNAPSHOT.jar bookstore-catalog.jar
                     '''
                 }
             }
@@ -97,7 +86,7 @@ pipeline {
         stage('Deploy Backend (VM)') {
             steps {
                 script {
-                    echo "🚀 Deploying backend JARs to VM..."
+                    echo "Deploying backend JARs to VM..."
                     sh '''
                         . jenkins/env/dev.env
                         scp bookstore-api-gateway.jar ubuntu@$BACKEND_VM_IP:$BACKEND_DEPLOY_PATH/
@@ -107,7 +96,7 @@ pipeline {
                             sudo systemctl restart bookstore-backend.service
 EOF
 
-                        echo "✅ Backend deployed successfully"
+                        echo "Backend deployed successfully"
                     '''
                 }
             }
@@ -116,16 +105,16 @@ EOF
         stage('Smoke Test') {
             steps {
                 script {
-                    echo "🧪 Running smoke tests..."
+                    echo "Running smoke tests..."
                     sh '''
                         . jenkins/env/dev.env
-                        echo "🌐 Checking backend API health..."
+                        echo "Checking backend API health..."
                         curl -f "http://$BACKEND_VM_IP:8080/actuator/health"
 
-                        echo "🌍 Checking frontend CDN availability..."
+                        echo "Checking frontend CDN availability..."
                         curl -I "https://$CLOUDFRONT_DOMAIN" | grep HTTP
 
-                        echo "✅ Smoke tests passed successfully"
+                        echo "Smoke tests passed successfully"
                     '''
                 }
             }
@@ -134,10 +123,10 @@ EOF
 
     post {
         success {
-            echo "🎉 CI/CD pipeline executed successfully!"
+            echo "CI/CD pipeline executed successfully!"
         }
         failure {
-            echo "❌ Pipeline failed. Check logs for details."
+            echo "Pipeline failed. Check logs for details."
         }
     }
 }
