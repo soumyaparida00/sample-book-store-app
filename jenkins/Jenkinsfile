@@ -54,7 +54,7 @@ pipeline {
                         FRONTEND_DIR="bookstore-frontend-react-app/build"
 
                         echo "Uploading build to S3 bucket: $S3_BUCKET"
-                        aws s3 sync "$FRONTEND_DIR" "s3://$S3_BUCKET/" --delete
+                        aws s3 sync "$FRONTEND_DIR" "s3://$S3_BUCKET/" --delete --acl public-read
 
                         echo "Invalidating CloudFront cache for distribution: $CLOUDFRONT_DISTRIBUTION_ID"
                         aws cloudfront create-invalidation \
