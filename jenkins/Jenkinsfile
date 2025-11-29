@@ -34,10 +34,13 @@ pipeline {
                 script {
                     echo "Building React frontend..."
                     sh '''
+                        . jenkins/env/dev.env
                         cd bookstore-frontend-react-app
                         rm -rf node_modules package-lock.json build
 
                         export NODE_OPTIONS=--openssl-legacy-provider
+                        # Point the frontend to the deployed API gateway for this environment.
+                        export REACT_APP_BACKEND_API_GATEWAY_URL="http://$BACKEND_VM_IP:8765"
                         npm install --legacy-peer-deps
                         npm run build
                     '''
