@@ -83,6 +83,62 @@ pipeline {
             }
         }
 
+        stage('Provision Backend Services (VM)') {
+            steps {
+                script {
+                    echo "Ensuring backend systemd services exist..."
+                    sh '''
+                        . jenkins/env/dev.env
+
+                        ssh ubuntu@$BACKEND_VM_IP <<'EOF'
+                        set -e
+                        sudo mkdir -p $BACKEND_DEPLOY_PATH
+                        sudo chown ubuntu:ubuntu $BACKEND_DEPLOY_PATH
+
+                        sudo tee /etc/systemd/system/bookstore-backend.service > /dev/null <<'UNIT'
+[Unit]
+Description=Bookstore API Gateway
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=$BACKEND_DEPLOY_PATH
+ExecStart=/usr/bin/java -jar bookstore-api-gateway.jar
+Restart=on-failure
+RestartSec=5
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+                        sudo tee /etc/systemd/system/bookstore-catalog.service > /dev/null <<'UNIT'
+[Unit]
+Description=Bookstore Catalog Service
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=$BACKEND_DEPLOY_PATH
+Environment=SERVER_PORT=6001
+ExecStart=/usr/bin/java -jar bookstore-catalog.jar
+Restart=on-failure
+RestartSec=5
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+                        sudo systemctl daemon-reload
+                        sudo systemctl enable bookstore-backend.service
+                        sudo systemctl enable bookstore-catalog.service
+                        EOF
+                    '''
+                }
+            }
+        }
+
         stage('Deploy Backend (VM)') {
             steps {
                 script {
@@ -94,9 +150,49 @@ pipeline {
 
                         ssh ubuntu@$BACKEND_VM_IP <<EOF
                             sudo systemctl restart bookstore-backend.service
+                            sudo systemctl restart bookstore-catalog.service
 EOF
 
                         echo "Backend deployed successfully"
+                    '''
+                }
+            }
+        }
+
+        stage('Install & Configure Nginx (VM)') {
+            steps {
+                script {
+                    echo "Installing and configuring Nginx reverse proxy..."
+                    sh '''
+                        . jenkins/env/dev.env
+
+                        ssh ubuntu@$BACKEND_VM_IP <<'EOF'
+                        set -e
+                        if ! command -v nginx >/dev/null 2>&1; then
+                            sudo apt-get update -y
+                            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
+                        fi
+
+                        sudo tee /etc/nginx/sites-available/bookstore > /dev/null <<'NGINX'
+server {
+    listen 80;
+    server_name _;
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+NGINX
+
+                        sudo ln -sf /etc/nginx/sites-available/bookstore /etc/nginx/sites-enabled/bookstore
+                        sudo rm -f /etc/nginx/sites-enabled/default
+                        sudo nginx -t
+                        sudo systemctl enable nginx
+                        sudo systemctl restart nginx
+                        EOF
                     '''
                 }
             }
