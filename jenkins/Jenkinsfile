@@ -100,7 +100,7 @@ pipeline {
 
                         sudo mkdir -p "$BACKEND_DEPLOY_PATH"
                         sudo mkdir -p "$BACKEND_DEPLOY_PATH/images"
-                        sudo chown ubuntu:ubuntu "$BACKEND_DEPLOY_PATH"
+                        sudo chown -R ubuntu:ubuntu "$BACKEND_DEPLOY_PATH"
 
                         sudo tee /etc/systemd/system/bookstore-eureka.service > /dev/null <<UNIT
 [Unit]
@@ -177,6 +177,7 @@ EOF
                         scp -r images ubuntu@$BACKEND_VM_IP:$BACKEND_DEPLOY_PATH/
 
                         ssh ubuntu@$BACKEND_VM_IP <<EOF
+                            sudo chown -R ubuntu:ubuntu "$BACKEND_DEPLOY_PATH"
                             sudo systemctl restart bookstore-eureka.service
                             sudo systemctl restart bookstore-backend.service
                             sudo systemctl restart bookstore-catalog.service
