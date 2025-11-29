@@ -78,6 +78,7 @@ pipeline {
                         # Collect deployable JARs for the services we ship
                         cp bookstore-api-gateway-service/target/bookstore-api-gateway-service-0.0.1-SNAPSHOT.jar bookstore-api-gateway.jar
                         cp bookstore-catalog-service/target/bookstore-catalog-service-0.0.1-SNAPSHOT.jar bookstore-catalog.jar
+                        cp bookstore-eureka-discovery-service/target/bookstore-eureka-discovery-service-0.0.1-SNAPSHOT.jar bookstore-eureka-discovery.jar
                     '''
                 }
             }
@@ -96,6 +97,24 @@ pipeline {
 
                         sudo mkdir -p "$BACKEND_DEPLOY_PATH"
                         sudo chown ubuntu:ubuntu "$BACKEND_DEPLOY_PATH"
+
+                        sudo tee /etc/systemd/system/bookstore-eureka.service > /dev/null <<UNIT
+[Unit]
+Description=Bookstore Eureka Discovery
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=$BACKEND_DEPLOY_PATH
+Environment=SERVER_PORT=8761
+ExecStart=/usr/bin/java -jar bookstore-eureka-discovery.jar
+Restart=on-failure
+RestartSec=5
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target
+UNIT
 
                         sudo tee /etc/systemd/system/bookstore-backend.service > /dev/null <<UNIT
 [Unit]
@@ -133,6 +152,7 @@ WantedBy=multi-user.target
 UNIT
 
                         sudo systemctl daemon-reload
+                        sudo systemctl enable bookstore-eureka.service
                         sudo systemctl enable bookstore-backend.service
                         sudo systemctl enable bookstore-catalog.service
 EOF
@@ -149,8 +169,10 @@ EOF
                         . jenkins/env/dev.env
                         scp bookstore-api-gateway.jar ubuntu@$BACKEND_VM_IP:$BACKEND_DEPLOY_PATH/
                         scp bookstore-catalog.jar ubuntu@$BACKEND_VM_IP:$BACKEND_DEPLOY_PATH/
+                        scp bookstore-eureka-discovery.jar ubuntu@$BACKEND_VM_IP:$BACKEND_DEPLOY_PATH/
 
                         ssh ubuntu@$BACKEND_VM_IP <<EOF
+                            sudo systemctl restart bookstore-eureka.service
                             sudo systemctl restart bookstore-backend.service
                             sudo systemctl restart bookstore-catalog.service
 EOF
@@ -180,7 +202,7 @@ server {
     listen 80;
     server_name _;
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:8765;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -207,7 +229,8 @@ EOF
                     sh '''
                         . jenkins/env/dev.env
                         echo "Checking backend API health..."
-                        curl -f "http://$BACKEND_VM_IP:8080/actuator/health"
+                        # Gateway listens on 8765 by default; hit its actuator endpoint.
+                        curl -f "http://$BACKEND_VM_IP:8765/actuator/health"
 
                         echo "Checking frontend CDN availability..."
                         curl -I "https://$CLOUDFRONT_DOMAIN" | grep HTTP
