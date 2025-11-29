@@ -234,9 +234,19 @@ EOF
                     echo "Running smoke tests..."
                     sh '''
                         . jenkins/env/dev.env
-                        echo "Checking backend API health..."
-                        # Gateway listens on 8765 by default; hit its actuator endpoint.
-                        curl -f "http://$BACKEND_VM_IP:8765/actuator/health"
+                        echo "Checking backend API health (with retries while services start)..."
+                        max_retries=12
+                        sleep_between=10
+                        for i in $(seq 1 $max_retries); do
+                            if curl -fsS "http://$BACKEND_VM_IP:8765/actuator/health" > /dev/null; then
+                                echo "Backend is healthy."
+                                break
+                            fi
+                            echo "Attempt $i failed, retrying in ${sleep_between}s..."
+                            sleep $sleep_between
+                        done
+                        # Final check to fail the stage if still unhealthy
+                        curl -fsS "http://$BACKEND_VM_IP:8765/actuator/health"
 
                         echo "Checking frontend CDN availability..."
                         curl -I "https://$CLOUDFRONT_DOMAIN" | grep HTTP
