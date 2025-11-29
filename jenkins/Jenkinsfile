@@ -90,12 +90,14 @@ pipeline {
                     sh '''
                         . jenkins/env/dev.env
 
-                        ssh ubuntu@$BACKEND_VM_IP <<'EOF'
+                        ssh ubuntu@$BACKEND_VM_IP <<EOF
                         set -e
-                        sudo mkdir -p $BACKEND_DEPLOY_PATH
-                        sudo chown ubuntu:ubuntu $BACKEND_DEPLOY_PATH
+                        BACKEND_DEPLOY_PATH="$BACKEND_DEPLOY_PATH"
 
-                        sudo tee /etc/systemd/system/bookstore-backend.service > /dev/null <<'UNIT'
+                        sudo mkdir -p "$BACKEND_DEPLOY_PATH"
+                        sudo chown ubuntu:ubuntu "$BACKEND_DEPLOY_PATH"
+
+                        sudo tee /etc/systemd/system/bookstore-backend.service > /dev/null <<UNIT
 [Unit]
 Description=Bookstore API Gateway
 After=network.target
@@ -112,7 +114,7 @@ SuccessExitStatus=143
 WantedBy=multi-user.target
 UNIT
 
-                        sudo tee /etc/systemd/system/bookstore-catalog.service > /dev/null <<'UNIT'
+                        sudo tee /etc/systemd/system/bookstore-catalog.service > /dev/null <<UNIT
 [Unit]
 Description=Bookstore Catalog Service
 After=network.target
