@@ -29,6 +29,36 @@ pipeline {
             }
         }
 
+        stage('Secret Scan (TruffleHog)') {
+            steps {
+                script {
+                    echo "Running TruffleHog to scan for leaked secrets..."
+                    sh '''
+                        # Use containerized trufflehog to avoid local installs
+                        docker run --rm -v "$PWD":/repo trufflesecurity/trufflehog:latest \
+                          filesystem /repo \
+                          --fail \
+                          --only-verified
+                    '''
+                }
+            }
+        }
+
+        stage('Security Audit (npm)') {
+            steps {
+                script {
+                    echo "Running npm audit (production, high severity threshold)..."
+                    sh '''
+                        . jenkins/env/dev.env
+                        cd bookstore-frontend-react-app
+                        rm -rf node_modules package-lock.json
+                        npm install --legacy-peer-deps
+                        npm audit --production --audit-level=high
+                    '''
+                }
+            }
+        }
+
         stage('Build Frontend') {
             steps {
                 script {
@@ -66,6 +96,23 @@ pipeline {
 
                         echo "Frontend deployed successfully via CloudFront"
                     '''
+                }
+            }
+        }
+
+        stage('DAST (OWASP ZAP)') {
+            steps {
+                script {
+                    echo "Running OWASP ZAP baseline scan against deployed site..."
+                    sh '''
+                        . jenkins/env/dev.env
+                        docker run --rm -t owasp/zap2docker-stable zap-baseline.py \
+                          -t "https://$CLOUDFRONT_DOMAIN" \
+                          -J zap-baseline.json \
+                          -r zap-baseline.html \
+                          -m 5
+                    '''
+                    archiveArtifacts artifacts: 'zap-baseline.*', allowEmptyArchive: true
                 }
             }
         }
