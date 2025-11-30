@@ -48,6 +48,32 @@ pipeline {
             }
         }
     }
+    
+    stages {
+
+        stage('Deploy Frontend (S3 + CloudFront)') {
+            steps {
+                script {
+                    echo "Deploying frontend to S3 and invalidating CloudFront cache..."
+                    sh '''
+                        . jenkins/env/dev.env
+                        FRONTEND_DIR="bookstore-frontend-react-app/build"
+
+                        echo "Uploading build to S3 bucket: $S3_BUCKET"
+                        aws s3 sync "$FRONTEND_DIR" "s3://$S3_BUCKET/" --delete --acl public-read
+
+                        echo "Invalidating CloudFront cache for distribution: $CLOUDFRONT_DISTRIBUTION_ID"
+                        aws cloudfront create-invalidation \
+                            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+                            --paths "/*"
+
+                        echo "Frontend deployed successfully via CloudFront"
+                    '''
+                }
+            }
+        }
+    }
+    
     post {
         always {
             script {
