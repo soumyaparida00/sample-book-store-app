@@ -16,19 +16,6 @@ pipeline {
 
     stages {
 
-        stage('Checkout Source Code') {
-            steps {
-                script {
-                    echo "Using existing workspace checkout..."
-                    sh '''
-                        git checkout main || git checkout master
-                        git pull origin main || git pull origin master
-                    '''
-                    echo "Repository ready"
-                }
-            }
-        }
-
         stage('Deploy Frontend (S3 + CloudFront)') {
             steps {
                 script {
@@ -50,3 +37,5 @@ pipeline {
                 }
             }
         }
+    }
+}
