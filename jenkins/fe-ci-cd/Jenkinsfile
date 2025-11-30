@@ -35,7 +35,7 @@ pipeline {
                     echo "Running TruffleHog to scan for leaked secrets..."
                     sh '''
                         # Use containerized trufflehog to avoid local installs
-                        sudo docker run --rm -v "$PWD":/repo trufflesecurity/trufflehog:latest \
+                        docker run --rm -v "$PWD":/repo trufflesecurity/trufflehog:latest \
                           filesystem /repo \
                           --fail \
                           --only-verified
@@ -106,7 +106,7 @@ pipeline {
                     echo "Running OWASP ZAP baseline scan against deployed site..."
                     sh '''
                         . jenkins/env/dev.env
-                        sudo docker run --rm -t owasp/zap2docker-stable zap-baseline.py \
+                        docker run --rm -t owasp/zap2docker-stable zap-baseline.py \
                           -t "https://$CLOUDFRONT_DOMAIN" \
                           -J zap-baseline.json \
                           -r zap-baseline.html \
