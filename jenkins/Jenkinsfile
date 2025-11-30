@@ -146,6 +146,10 @@ After=network.target
 User=ubuntu
 WorkingDirectory=$BACKEND_DEPLOY_PATH
 Environment=SERVER_PORT=6001
+Environment=SPRING_PROFILES_ACTIVE=mysql
+Environment=SPRING_DATASOURCE_URL=jdbc:mysql://$DB_VM_IP:3306/$MYSQL_DB?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC
+Environment=SPRING_DATASOURCE_USERNAME=$MYSQL_USER
+Environment=SPRING_DATASOURCE_PASSWORD=$MYSQL_PASSWORD
 ExecStart=/usr/bin/java -jar bookstore-catalog.jar
 Restart=on-failure
 RestartSec=5
