@@ -107,13 +107,15 @@ pipeline {
                     sh '''
                         . jenkins/env/dev.env
                         mkdir -p zap
+                        chmod -R 777 zap
                         # Use GHCR-hosted ZAP image (includes zap-baseline.py at /zap)
                         docker run --rm -t \
+                          --user 0:0 \
                           -v "$PWD/zap":/zap/wrk \
                           ghcr.io/zaproxy/zaproxy:stable /zap/zap-baseline.py \
                           -t "https://$CLOUDFRONT_DOMAIN" \
-                          -J /zap/wrk/zap-baseline.json \
-                          -r /zap/wrk/zap-baseline.html \
+                          -J zap-baseline.json \
+                          -r zap-baseline.html \
                           -m 5
                     '''
                     archiveArtifacts artifacts: 'zap/zap-baseline.*', allowEmptyArchive: true
