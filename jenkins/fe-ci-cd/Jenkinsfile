@@ -106,7 +106,7 @@ pipeline {
                     echo "Running OWASP ZAP baseline scan against deployed site..."
                     sh '''
                         . jenkins/env/dev.env
-                        docker run --rm -t owasp/zap2docker-stable zap-baseline.py \
+                        docker run --rm -t securecodebox/zap zap-baseline.py \
                           -t "https://$CLOUDFRONT_DOMAIN" \
                           -J zap-baseline.json \
                           -r zap-baseline.html \
