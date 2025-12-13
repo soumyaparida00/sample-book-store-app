@@ -106,7 +106,8 @@ pipeline {
                     echo "Running OWASP ZAP baseline scan against deployed site..."
                     sh '''
                         . jenkins/env/dev.env
-                        docker run --rm -t securecodebox/zap zap-baseline.py \
+                        # Use GHCR-hosted ZAP image (includes zap-baseline.py at /zap)
+                        docker run --rm -t ghcr.io/zaproxy/zaproxy:stable /zap/zap-baseline.py \
                           -t "https://$CLOUDFRONT_DOMAIN" \
                           -J zap-baseline.json \
                           -r zap-baseline.html \
