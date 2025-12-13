@@ -106,14 +106,17 @@ pipeline {
                     echo "Running OWASP ZAP baseline scan against deployed site..."
                     sh '''
                         . jenkins/env/dev.env
+                        mkdir -p zap
                         # Use GHCR-hosted ZAP image (includes zap-baseline.py at /zap)
-                        docker run --rm -t ghcr.io/zaproxy/zaproxy:stable /zap/zap-baseline.py \
+                        docker run --rm -t \
+                          -v "$PWD/zap":/zap/wrk \
+                          ghcr.io/zaproxy/zaproxy:stable /zap/zap-baseline.py \
                           -t "https://$CLOUDFRONT_DOMAIN" \
-                          -J zap-baseline.json \
-                          -r zap-baseline.html \
+                          -J /zap/wrk/zap-baseline.json \
+                          -r /zap/wrk/zap-baseline.html \
                           -m 5
                     '''
-                    archiveArtifacts artifacts: 'zap-baseline.*', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'zap/zap-baseline.*', allowEmptyArchive: true
                 }
             }
         }
