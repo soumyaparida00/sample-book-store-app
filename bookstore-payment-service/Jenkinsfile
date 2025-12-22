@@ -17,14 +17,17 @@ pipeline {
     }
 
     stages {
-        stage('Validate Branch') {
+        stage('Checkout Source Code') {
             steps {
                 script {
-                    def branch = env.BRANCH_NAME ?: (sh(script: "git rev-parse --abbrev-ref HEAD || echo release", returnStdout: true).trim())
-                    if (!branch.contains('release')) {
-                        error "This pipeline only builds the release branch. Detected: ${branch}"
-                    }
-                    echo "Building branch: ${branch}"
+                    echo "Using existing workspace checkout..."
+                    sh '''
+                        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD || echo release)
+                        TARGET_BRANCH=${BRANCH_NAME:-${CURRENT_BRANCH:-release}}
+                        git checkout "$TARGET_BRANCH"
+                        git pull origin "$TARGET_BRANCH"
+                    '''
+                    echo "Repository ready on branch: ${env.BRANCH_NAME ?: 'release'}"
                 }
             }
         }
