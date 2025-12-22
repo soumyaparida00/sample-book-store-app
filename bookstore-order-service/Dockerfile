@@ -1,12 +1,16 @@
-FROM openjdk:8-jdk-alpine
+# Multi-stage build: compile the service, then run on a slim JRE with dockerize wait.
+FROM maven:3.9-eclipse-temurin-11 AS builder
+WORKDIR /workspace
+COPY . .
+RUN mvn -pl bookstore-order-service -am -DskipTests clean package
 
+FROM eclipse-temurin:11-jre-jammy
 VOLUME /tmp
+WORKDIR /app
 
-ARG JAR_FILE
+COPY --from=builder /workspace/bookstore-order-service/target/bookstore-order-service-0.0.1-SNAPSHOT.jar order-service.jar
+# Using Dockerize to wait for MySQL before starting the service.
+COPY bookstore-order-service/dockerize /dockerize
+RUN chmod +x /dockerize
 
-COPY target/${JAR_FILE} order-service.jar
-
-#Using Dokerize to check whether db is up, if it is then start this service.
-COPY dockerize dockerize
-
-CMD ./dockerize -wait tcp://bookstore-mysql-db:3306 -timeout 15m java -Djava.security.egd=file:/dev/./urandom -jar /order-service.jar
+CMD /dockerize -wait tcp://bookstore-mysql-db:3306 -timeout 15m java -Djava.security.egd=file:/dev/./urandom -jar /app/order-service.jar

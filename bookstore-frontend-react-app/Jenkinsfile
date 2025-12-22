@@ -5,11 +5,6 @@ pipeline {
         jdk 'jdk11'
     }
 
-    environment {
-        // Load variables
-        ENV_FILE = "jenkins/env/dev.env"
-    }
-
     options {
         timestamps()
     }
@@ -49,7 +44,9 @@ pipeline {
                 script {
                     echo "Running npm audit (production, high severity threshold)..."
                     sh '''
-                        . jenkins/env/dev.env
+                        # Load shared and frontend-specific env
+                        if [ -f jenkins/env/dev.env ]; then . jenkins/env/dev.env; fi
+                        if [ -f bookstore-frontend-react-app/dev.env ]; then . bookstore-frontend-react-app/dev.env; fi
                         cd bookstore-frontend-react-app
                         rm -rf node_modules package-lock.json
                         npm install --legacy-peer-deps
@@ -64,13 +61,17 @@ pipeline {
                 script {
                     echo "Building React frontend..."
                     sh '''
-                        . jenkins/env/dev.env
+                        # Load shared and frontend-specific env (frontend dev.env contains the public API URL)
+                        if [ -f jenkins/env/dev.env ]; then . jenkins/env/dev.env; fi
+                        if [ -f bookstore-frontend-react-app/dev.env ]; then . bookstore-frontend-react-app/dev.env; fi
+                        # Optional override for additional frontend settings
+                        if [ -f jenkins/env/frontend.env ]; then . jenkins/env/frontend.env; fi
                         cd bookstore-frontend-react-app
                         rm -rf node_modules package-lock.json build
 
                         export NODE_OPTIONS=--openssl-legacy-provider
-                        # Point the frontend to the deployed API gateway for this environment.
-                        export REACT_APP_BACKEND_API_GATEWAY_URL="http://$BACKEND_VM_IP:8765"
+                        # Point the frontend to the deployed API gateway (prefer explicit frontend env URL over VM IP).
+                        export REACT_APP_BACKEND_API_GATEWAY_URL="${FRONTEND_API_GATEWAY_URL:-${API_GATEWAY_URL:-${BACKEND_API_GATEWAY_URL:-http://$BACKEND_VM_IP:8765}}}"
                         npm install --legacy-peer-deps
                         npm run build
                     '''
@@ -83,7 +84,8 @@ pipeline {
                 script {
                     echo "Deploying frontend to S3 and invalidating CloudFront cache..."
                     sh '''
-                        . jenkins/env/dev.env
+                        if [ -f jenkins/env/dev.env ]; then . jenkins/env/dev.env; fi
+                        if [ -f bookstore-frontend-react-app/dev.env ]; then . bookstore-frontend-react-app/dev.env; fi
                         FRONTEND_DIR="bookstore-frontend-react-app/build"
 
                         echo "Uploading build to S3 bucket: $S3_BUCKET"

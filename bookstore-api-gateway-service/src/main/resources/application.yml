@@ -3,7 +3,7 @@ server:
 
 spring:
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    active: ${SPRING_PROFILES_ACTIVE:k8s}
   zipkin:
     base-url: http://${ZIPKIN_HOST:localhost:9411}
     enabled: true
@@ -27,19 +27,19 @@ zuul:
   routes:
     billing:
       path: /billing/**
-      serviceId: bookstore-billing-service
+      url: http://bookstore-billing-service:5001
     catalog:
       path: /catalog/**
-      serviceId: bookstore-catalog-service
+      url: http://bookstore-catalog-service:6001
     account:
       path: /account/**
-      serviceId: bookstore-account-service
+      url: http://bookstore-account-service:4001
     order:
       path: /order/**
-      serviceId: bookstore-order-service
+      url: http://bookstore-order-service:7001
     payment:
       path: /payment/**
-      serviceId: bookstore-payment-service
+      url: http://bookstore-payment-service:8001
   ribbon:
     eager-load:
       enabled: true
@@ -48,6 +48,8 @@ zuul:
 ribbon:
   ConnectTimeout: 10000
   ReadTimeout: 60000
+  eureka:
+    enabled: false
 
 hystrix:
   command:

@@ -1,0 +1,48 @@
+pipeline {
+    agent any
+
+    tools {
+        jdk 'jdk11'
+        maven 'maven3'
+    }
+
+    options {
+        timestamps()
+    }
+
+    stages {
+        stage('Checkout Source Code') {
+            steps {
+                script {
+                    echo "Using existing workspace checkout..."
+                    sh '''
+                        git checkout main || git checkout master
+                        git pull origin main || git pull origin master
+                    '''
+                    echo "Repository ready"
+                }
+            }
+        }
+
+        stage('Build Module') {
+            steps {
+                sh 'mvn -pl bookstore-catalog-service -am -DskipTests clean package'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                    IMAGE_TAG=${IMAGE_TAG:-bookstore-catalog-service:latest}
+                    docker build -f bookstore-catalog-service/Dockerfile -t "$IMAGE_TAG" .
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}

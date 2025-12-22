@@ -2,7 +2,7 @@ spring:
   application:
     name: bookstore-api-gateway-service
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    active: ${SPRING_PROFILES_ACTIVE:k8s}
 
 management:
   endpoints:
@@ -66,3 +66,19 @@ management:
 eureka:
   client:
     enabled: false #eureka discovery set false, in this profile consul discovery is enabled.
+
+---
+
+spring:
+  profiles: k8s
+  cloud:
+    discovery:
+      enabled: false
+    consul:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+    registerWithEureka: false
+    fetchRegistry: false

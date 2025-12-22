@@ -2,7 +2,7 @@ spring:
   application:
     name: bookstore-catalog-service
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    active: ${SPRING_PROFILES_ACTIVE:k8s}
 
 management:
   endpoints:
@@ -19,15 +19,6 @@ spring:
       enabled: false
     consul:
       enabled: false #consul discovery set false, in this profile eureka discovery is enabled.
-
-eureka:
-  client:
-    serviceUrl:
-      defaultZone: http://${EUREKA_HOST:localhost:8761}/eureka/
-    registerWithEureka: true
-    enabled: true #eureka discovery is enabled in this profile
-  instance:
-    prefer-ip-address: false
 
 management:
   metrics:
@@ -66,3 +57,19 @@ management:
 eureka:
   client:
     enabled: false #eureka discovery set false, in this profile consul discovery is enabled.
+
+---
+
+spring:
+  profiles: k8s
+  cloud:
+    discovery:
+      enabled: false
+    consul:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+    registerWithEureka: false
+    fetchRegistry: false
