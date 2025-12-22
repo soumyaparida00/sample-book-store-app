@@ -16,10 +16,12 @@ pipeline {
                 script {
                     echo "Using existing workspace checkout..."
                     sh '''
-                        git checkout main || git checkout master
-                        git pull origin main || git pull origin master
+                        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD || echo release)
+                        TARGET_BRANCH=${BRANCH_NAME:-${CURRENT_BRANCH:-release}}
+                        git checkout "$TARGET_BRANCH"
+                        git pull origin "$TARGET_BRANCH"
                     '''
-                    echo "Repository ready"
+                    echo "Repository ready on branch: ${env.BRANCH_NAME ?: 'release'}"
                 }
             }
         }
@@ -44,8 +46,7 @@ pipeline {
                 script {
                     echo "Running npm audit (production, high severity threshold)..."
                     sh '''
-                        # Load shared and frontend-specific env
-                        if [ -f jenkins/env/dev.env ]; then . jenkins/env/dev.env; fi
+                        # Load frontend-specific env (includes CloudFront and API gateway URL placeholder)
                         if [ -f bookstore-frontend-react-app/dev.env ]; then . bookstore-frontend-react-app/dev.env; fi
                         cd bookstore-frontend-react-app
                         rm -rf node_modules package-lock.json
@@ -61,11 +62,10 @@ pipeline {
                 script {
                     echo "Building React frontend..."
                     sh '''
-                        # Load shared and frontend-specific env (frontend dev.env contains the public API URL)
-                        if [ -f jenkins/env/dev.env ]; then . jenkins/env/dev.env; fi
+                        # Load frontend-specific env (frontend dev.env contains the public API URL)
                         if [ -f bookstore-frontend-react-app/dev.env ]; then . bookstore-frontend-react-app/dev.env; fi
-                        # Optional override for additional frontend settings
-                        if [ -f jenkins/env/frontend.env ]; then . jenkins/env/frontend.env; fi
+                        # Optional override for additional frontend settings (per-environment)
+                        if [ -f bookstore-frontend-react-app/frontend.env ]; then . bookstore-frontend-react-app/frontend.env; fi
                         cd bookstore-frontend-react-app
                         rm -rf node_modules package-lock.json build
 
@@ -84,8 +84,8 @@ pipeline {
                 script {
                     echo "Deploying frontend to S3 and invalidating CloudFront cache..."
                     sh '''
-                        if [ -f jenkins/env/dev.env ]; then . jenkins/env/dev.env; fi
                         if [ -f bookstore-frontend-react-app/dev.env ]; then . bookstore-frontend-react-app/dev.env; fi
+                        if [ -f bookstore-frontend-react-app/frontend.env ]; then . bookstore-frontend-react-app/frontend.env; fi
                         FRONTEND_DIR="bookstore-frontend-react-app/build"
 
                         echo "Uploading build to S3 bucket: $S3_BUCKET"
@@ -107,7 +107,8 @@ pipeline {
                 script {
                     echo "Running OWASP ZAP baseline scan against deployed site..."
                     sh '''
-                        . jenkins/env/dev.env
+                        # Load frontend env for zap targets and S3/CF vars
+                        if [ -f bookstore-frontend-react-app/dev.env ]; then . bookstore-frontend-react-app/dev.env; fi
                         mkdir -p zap
                         chmod -R 777 zap
                         # Use GHCR-hosted ZAP image (includes zap-baseline.py at /zap)
