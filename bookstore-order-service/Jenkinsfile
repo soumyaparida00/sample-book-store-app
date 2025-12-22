@@ -43,7 +43,12 @@ pipeline {
                 sh '''
                     IMAGE_TAG=${IMAGE_TAG:-$(git rev-parse --short HEAD)}
                     AWS_REGION=${AWS_REGION:-us-east-1}
-                    ECR_REGISTRY=${ECR_REGISTRY:-${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com}
+                    ACCOUNT_ID=${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}
+                    if [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "null" ]; then
+                      echo "Unable to determine AWS account ID. Set AWS_ACCOUNT_ID or ensure AWS CLI can run sts get-caller-identity."
+                      exit 1
+                    fi
+                    ECR_REGISTRY=${ECR_REGISTRY:-${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com}
 
                     # Ensure ECR repo exists (idempotent)
                     aws ecr describe-repositories --repository-names "$IMAGE_NAME" --region "$AWS_REGION" >/dev/null 2>&1 || \
