@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: istio-public
+  namespace: istio-system
+  annotations:
+    kubernetes.io/ingress.class: alb
+
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+
+    # Enable both listeners
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+
+    # ACM cert
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:920373027474:certificate/c589c3f7-9d03-4988-b7a3-28ab98792f6d
+
+    # Redirect action
+    alb.ingress.kubernetes.io/actions.ssl-redirect: >
+      {"Type":"redirect","RedirectConfig":{"Protocol":"HTTPS","Port":"443","StatusCode":"HTTP_301"}}
+spec:
+  rules:
+  - host: argocd.secureops360.com
+    http:
+      paths:
+      # 1️⃣ HTTP → HTTPS
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ssl-redirect
+            port:
+              name: use-annotation
+
+      # 2️⃣ HTTPS → Istio ingress
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: istio-ingressgateway
+            port:
+              number: 80

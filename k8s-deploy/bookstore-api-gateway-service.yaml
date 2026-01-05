@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookstore-api-gateway-service
+  labels:
+    app: bookstore-api-gateway-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookstore-api-gateway-service
+  template:
+    metadata:
+      labels:
+        app: bookstore-api-gateway-service
+    spec:
+      containers:
+        - name: api-gateway-service
+          image: bookstore-api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8765
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "k8s"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookstore-api-gateway-service
+  labels:
+    app: bookstore-api-gateway-service
+spec:
+  type: ClusterIP
+  selector:
+    app: bookstore-api-gateway-service
+  ports:
+    - name: http
+      port: 8765
+      targetPort: 8765

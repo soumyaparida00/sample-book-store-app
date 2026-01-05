@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookstore-payment-service
+  labels:
+    app: bookstore-payment-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookstore-payment-service
+  template:
+    metadata:
+      labels:
+        app: bookstore-payment-service
+    spec:
+      containers:
+        - name: payment-service
+          image: bookstore-payment-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "mysql"
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: bookstore-db
+                  key: url
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: bookstore-db
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bookstore-db
+                  key: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookstore-payment-service
+  labels:
+    app: bookstore-payment-service
+spec:
+  type: ClusterIP
+  selector:
+    app: bookstore-payment-service
+  ports:
+    - name: http
+      port: 8001
+      targetPort: 8001

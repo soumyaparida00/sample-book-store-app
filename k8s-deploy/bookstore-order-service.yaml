@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookstore-order-service
+  labels:
+    app: bookstore-order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookstore-order-service
+  template:
+    metadata:
+      labels:
+        app: bookstore-order-service
+    spec:
+      containers:
+        - name: order-service
+          image: bookstore-order-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 7001
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "mysql"
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: bookstore-db
+                  key: url
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: bookstore-db
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bookstore-db
+                  key: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookstore-order-service
+  labels:
+    app: bookstore-order-service
+spec:
+  type: ClusterIP
+  selector:
+    app: bookstore-order-service
+  ports:
+    - name: http
+      port: 7001
+      targetPort: 7001
